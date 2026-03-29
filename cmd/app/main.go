@@ -1,0 +1,27 @@
+package main
+
+import (
+	"log"
+	"net/http"
+
+	httpTransport "github.com/Ishee11/DSP/internal/transport/http"
+
+	"github.com/Ishee11/DSP/internal/engine"
+	"github.com/Ishee11/DSP/internal/model"
+)
+
+func main() {
+	campaigns := []model.Campaign{
+		{ID: "c1", SiteID: "1", DeviceType: "mobile", Price: 1.2},
+		{ID: "c2", SiteID: "1", DeviceType: "desktop", Price: 0.8},
+		{ID: "c3", SiteID: "2", DeviceType: "mobile", Price: 1.5},
+	}
+
+	e := engine.New()
+	h := httpTransport.New(e, campaigns)
+
+	http.HandleFunc("/bid", h.Bid)
+
+	log.Println("DSP started on :8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
