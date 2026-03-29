@@ -50,14 +50,6 @@ func (e *Engine) Decide(
 	return decideFromCandidates(req, candidates, e.scorer)
 }
 
-func Decide(
-	req model.BidRequest,
-	campaigns []model.Campaign,
-) (*model.BidResponse, bool) {
-	candidates := StaticFilter{}.Filter(req, campaigns)
-	return decideFromCandidates(req, candidates, PriceScorer{})
-}
-
 func decideFromCandidates(
 	req model.BidRequest,
 	candidates []model.Campaign,

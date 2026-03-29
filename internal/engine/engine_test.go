@@ -17,10 +17,10 @@ func TestDecide(t *testing.T) {
 		{
 			name: "single matching campaign",
 			req: model.BidRequest{
-				RequestID: "r1",
-				ImpID:     "imp1",
-				SiteID:    "1",
-				DeviceType:"mobile",
+				RequestID:  "r1",
+				ImpID:      "imp1",
+				SiteID:     "1",
+				DeviceType: "mobile",
 				FloorPrice: 1.0,
 			},
 			campaigns: []model.Campaign{
@@ -32,8 +32,8 @@ func TestDecide(t *testing.T) {
 		{
 			name: "no matching site",
 			req: model.BidRequest{
-				SiteID:    "2",
-				DeviceType:"mobile",
+				SiteID:     "2",
+				DeviceType: "mobile",
 				FloorPrice: 1.0,
 			},
 			campaigns: []model.Campaign{
@@ -44,8 +44,8 @@ func TestDecide(t *testing.T) {
 		{
 			name: "below floor price",
 			req: model.BidRequest{
-				SiteID:    "1",
-				DeviceType:"mobile",
+				SiteID:     "1",
+				DeviceType: "mobile",
 				FloorPrice: 2.0,
 			},
 			campaigns: []model.Campaign{
@@ -56,8 +56,8 @@ func TestDecide(t *testing.T) {
 		{
 			name: "choose highest price",
 			req: model.BidRequest{
-				SiteID:    "1",
-				DeviceType:"mobile",
+				SiteID:     "1",
+				DeviceType: "mobile",
 				FloorPrice: 0.5,
 			},
 			campaigns: []model.Campaign{
@@ -70,8 +70,8 @@ func TestDecide(t *testing.T) {
 		{
 			name: "device mismatch",
 			req: model.BidRequest{
-				SiteID:    "1",
-				DeviceType:"desktop",
+				SiteID:     "1",
+				DeviceType: "desktop",
 				FloorPrice: 0.5,
 			},
 			campaigns: []model.Campaign{
@@ -83,7 +83,8 @@ func TestDecide(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, ok := Decide(tt.req, tt.campaigns)
+			engine := New()
+			resp, ok := engine.Decide(tt.req, tt.campaigns)
 
 			if ok != tt.expectBid {
 				t.Fatalf("expected bid=%v, got=%v", tt.expectBid, ok)
