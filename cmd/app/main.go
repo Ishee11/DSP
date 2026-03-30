@@ -8,6 +8,7 @@ import (
 
 	"github.com/Ishee11/DSP/internal/engine"
 	"github.com/Ishee11/DSP/internal/model"
+	"github.com/Ishee11/DSP/internal/observability"
 )
 
 // main boots a minimal DSP HTTP server with in-memory campaigns.
@@ -22,12 +23,10 @@ func main() {
 	}
 
 	e := engine.New()
-	h := httpTransport.New(e, campaigns)
-
-	// The service exposes a single bidding endpoint.
-	// Сервис публикует один endpoint для принятия решения по ставке.
-	http.HandleFunc("/bid", h.Bid)
+	metrics := observability.NewMetrics(nil, nil)
+	h := httpTransport.New(e, campaigns, metrics.DSP)
+	mux := httpTransport.NewMux(h, metrics)
 
 	log.Println("DSP started on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }

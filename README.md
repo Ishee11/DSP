@@ -93,6 +93,51 @@ curl -i -X POST http://localhost:8080/bid \
   }'
 ```
 
+## Observability
+
+English:
+- The service now exposes Prometheus metrics on `GET /metrics` on the same HTTP port as `/bid`.
+- Start the service with `go run ./cmd/app`, then open `http://localhost:8080/metrics`.
+- Successful bid flow is exported to metrics instead of per-request happy-path logs.
+- There are no downstream dependency calls in the current DSP implementation, so downstream metrics are not emitted yet.
+
+Русский:
+- Сервис теперь отдаёт Prometheus-метрики на `GET /metrics` на том же порту, что и `/bid`.
+- Запустите сервис командой `go run ./cmd/app`, затем откройте `http://localhost:8080/metrics`.
+- Успешный поток обработки ставок теперь уходит в метрики, а не в per-request happy-path логи.
+- Во внешние зависимости текущая реализация DSP не ходит, поэтому downstream-метрики пока не эмитятся.
+
+### Prometheus Config
+
+```yaml
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: dsp
+    static_configs:
+      - targets:
+          - localhost:8080
+```
+
+### Metrics Overview
+
+English:
+- `http_requests_total{route,method,status}`: total HTTP requests by normalized route template, method, and response status.
+- `http_request_duration_seconds{route,method,status}`: HTTP latency histogram for normalized routes.
+- `http_requests_in_flight`: current number of in-flight HTTP requests.
+- `dsp_bid_requests_total`: total number of incoming bid requests before validation.
+- `dsp_bid_responses_total{result}`: total DSP outcomes with `result` values such as `bid`, `no_bid`, `invalid_request`, `error`.
+- `dsp_bid_processing_duration_seconds{result}`: DSP processing latency histogram by final result.
+
+Русский:
+- `http_requests_total{route,method,status}`: общее число HTTP-запросов по нормализованному шаблону route, методу и статусу ответа.
+- `http_request_duration_seconds{route,method,status}`: гистограмма задержки HTTP-запросов по нормализованным route.
+- `http_requests_in_flight`: текущее количество HTTP-запросов в обработке.
+- `dsp_bid_requests_total`: общее количество входящих bid requests до валидации.
+- `dsp_bid_responses_total{result}`: итоговые DSP-результаты с `result` вроде `bid`, `no_bid`, `invalid_request`, `error`.
+- `dsp_bid_processing_duration_seconds{result}`: гистограмма времени обработки DSP-запросов по итоговому результату.
+
 Русский:
 ```bash
 go run ./cmd/app
