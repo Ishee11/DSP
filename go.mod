@@ -1,3 +1,3 @@
 module github.com/Ishee11/DSP
 
-go 1.22
+go 1.25
