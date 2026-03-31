@@ -1,6 +1,8 @@
 package http
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,6 +14,7 @@ import (
 	"github.com/Ishee11/DSP/internal/engine"
 	"github.com/Ishee11/DSP/internal/model"
 	"github.com/Ishee11/DSP/internal/observability"
+	"github.com/Ishee11/DSP/internal/storage"
 )
 
 func TestMetricsEndpointIsAvailable(t *testing.T) {
@@ -128,6 +131,35 @@ func TestInvalidBidRequestUpdatesErrorMetrics(t *testing.T) {
 	}
 }
 
+func TestBidEndpointReturnsInternalServerErrorWhenCampaignRepositoryFails(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	metrics := observability.NewMetrics(registry, registry)
+	handler := New(engine.New(), failingCampaignRepository{}, metrics.DSP)
+	router := NewMux(handler, metrics)
+
+	req := httptest.NewRequest(http.MethodPost, "/bid", strings.NewReader(`{
+		"request_id":"r1",
+		"imp_id":"imp1",
+		"site_id":"1",
+		"placement_id":"p1",
+		"floor_price":1.0,
+		"user_id":"u1",
+		"device_type":"mobile",
+		"ts":1710000000
+	}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", rec.Code)
+	}
+
+	if got := counterValue(t, registry, "dsp_bid_responses_total", map[string]string{"result": observability.ResultError}); got != 1 {
+		t.Fatalf("expected error counter=1, got %v", got)
+	}
+}
+
 func newTestRouter() (*http.ServeMux, *prometheus.Registry) {
 	registry := prometheus.NewRegistry()
 	metrics := observability.NewMetrics(registry, registry)
@@ -137,9 +169,15 @@ func newTestRouter() (*http.ServeMux, *prometheus.Registry) {
 		{ID: "c2", SiteID: "1", DeviceType: "desktop", Price: 0.8},
 	}
 
-	handler := New(engine.New(), campaigns, metrics.DSP)
+	handler := New(engine.New(), storage.NewInMemoryCampaignRepository(campaigns), metrics.DSP)
 
 	return NewMux(handler, metrics), registry
+}
+
+type failingCampaignRepository struct{}
+
+func (failingCampaignRepository) ListCampaigns(context.Context) ([]model.Campaign, error) {
+	return nil, errors.New("repository unavailable")
 }
 
 func counterValue(t *testing.T, registry *prometheus.Registry, name string, labels map[string]string) float64 {

@@ -8,6 +8,7 @@ import (
 	"github.com/Ishee11/DSP/internal/engine"
 	"github.com/Ishee11/DSP/internal/model"
 	"github.com/Ishee11/DSP/internal/observability"
+	"github.com/Ishee11/DSP/internal/storage"
 )
 
 type DSPMetrics interface {
@@ -18,22 +19,25 @@ type DSPMetrics interface {
 // Handler adapts HTTP requests to the bidding engine API.
 // Handler адаптирует HTTP-запросы к API bidding engine.
 type Handler struct {
-	engine    *engine.Engine
-	campaigns []model.Campaign
-	metrics   DSPMetrics
+	engine       *engine.Engine
+	campaignRepo storage.CampaignRepository
+	metrics      DSPMetrics
 }
 
 // New constructs an HTTP handler with the engine and campaign source.
 // New создаёт HTTP handler с движком и источником кампаний.
-func New(e *engine.Engine, campaigns []model.Campaign, metrics DSPMetrics) *Handler {
+func New(e *engine.Engine, campaignRepo storage.CampaignRepository, metrics DSPMetrics) *Handler {
 	if metrics == nil {
 		metrics = noopDSPMetrics{}
 	}
+	if campaignRepo == nil {
+		campaignRepo = storage.NewInMemoryCampaignRepository(nil)
+	}
 
 	return &Handler{
-		engine:    e,
-		campaigns: campaigns,
-		metrics:   metrics,
+		engine:       e,
+		campaignRepo: campaignRepo,
+		metrics:      metrics,
 	}
 }
 
@@ -51,7 +55,14 @@ func (h *Handler) Bid(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, ok := h.engine.Decide(req, h.campaigns)
+	campaigns, err := h.campaignRepo.ListCampaigns(r.Context())
+	if err != nil {
+		h.metrics.ObserveBidResult(observability.ResultError, time.Since(start))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp, ok := h.engine.Decide(req, campaigns)
 
 	if !ok {
 		h.metrics.ObserveBidResult(observability.ResultNoBid, time.Since(start))
